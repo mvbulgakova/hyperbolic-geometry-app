@@ -1,7 +1,8 @@
 # app.py
-
 import dash
 from dash import html, dcc
+from dash.dependencies import Input, Output, State # <-- Добавьте эту строку
+# import dash_bootstrap_components as dbc # Если вы используете эту версию
 
 # Инициализация Dash приложения с поддержкой страниц
 app = dash.Dash(__name__, use_pages=True, suppress_callback_exceptions=True) # Добавлено suppress_callback_exceptions
