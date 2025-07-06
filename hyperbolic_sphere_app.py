@@ -211,7 +211,7 @@ app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12p
     
     # --- КНОПКА СКРЫТИЯ/ПОКАЗА ОСЕЙ (ПЕРЕМЕЩЕНА) ---
     html.Div([
-        html.Button('Скрыть/Показать оси XYZ', id='toggle-axes-button', n_clicks=0,
+        html.Button('Скрыть/показать оси XYZ', id='toggle-axes-button', n_clicks=0,
                     style={'margin-top': '20px', 'margin-left': 'auto', 'margin-right': 'auto', 'display': 'block', 'width': 'auto', 'padding': '10px 20px'}),
         dcc.Store(id='axes-visibility-store', data={'visible': True})
     ], style={'width': '80%', 'margin': 'auto', 'text-align': 'center'}),
