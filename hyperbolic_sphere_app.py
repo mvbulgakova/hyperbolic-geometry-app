@@ -288,5 +288,7 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
     )
     
     return fig, new_axes_visibility_data
+
+
 # Добавлено для развертывания
 server = app.server
