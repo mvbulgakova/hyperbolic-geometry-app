@@ -32,10 +32,10 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         hoverinfo='none'
     ))
 
-    # Гиперболическая сфера
-    x_hs = center_hs[0] + r_hs * np.outer(np.cos(phi_surf), np.sin(theta_surf))
-    y_hs = center_hs[1] + r_hs * np.outer(np.sin(phi_surf), np.sin(theta_surf))
-    z_hs = center_hs[2] + r_hs * np.outer(np.ones_like(phi_surf), np.cos(theta_surf))
+    # Гиперболическая сфера - ИСПРАВЛЕНИЕ ЗДЕСЬ
+    x_hs = center_hs[0] + radius_hs * np.outer(np.cos(phi_surf), np.sin(theta_surf))
+    y_hs = center_hs[1] + radius_hs * np.outer(np.sin(phi_surf), np.sin(theta_surf))
+    z_hs = center_hs[2] + radius_hs * np.outer(np.ones_like(phi_surf), np.cos(theta_surf))
     fig.add_trace(go.Surface(
         x=x_hs, y=y_hs, z=z_hs,
         colorscale='Greens', opacity=0.6, showscale=False, name='Гиперболическая сфера',
@@ -50,8 +50,8 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
     ))
 
     # Радиальные линии
-    num_lines = 50
-
+    num_lines = 50 
+    
     indices = np.arange(0, num_lines, dtype=float) + 0.5
     phi_dirs = np.arccos(1 - 2 * indices / num_lines)
     theta_dirs = np.pi * (1 + 5**0.5) * indices
@@ -64,18 +64,18 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         ])
 
         intersect_point = center_hs + radius_hs * unit_dir_vec
-
+        
         a = 1.0
         b = 2 * np.dot(center_hs, unit_dir_vec)
         c = np.dot(center_hs, center_hs) - r**2
-
+        
         discriminant = b**2 - 4*a*c
-
+        
         if discriminant < 0:
             continue
-
+            
         t_plus = (-b + np.sqrt(discriminant)) / (2*a)
-
+        
         absolute_point = center_hs + t_plus * unit_dir_vec
 
         fig.add_trace(go.Scatter3d(
@@ -125,9 +125,9 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
         aspectmode='data'
     )
-
-    initial_camera_eye = dict(x=1.5, y=1.5, z=1.5)
-
+    
+    initial_camera_eye = dict(x=1.5, y=1.5, z=1.5) 
+    
     if current_camera:
         scene_settings['camera'] = current_camera
     else:
@@ -152,36 +152,38 @@ app = dash.Dash(__name__)
 
 app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12px', 'color': 'black'}, children=[
     html.H1("Интерактивная модель Бельтрами-Клейна", style={'textAlign': 'center'}),
+    
+    # КОНТЕЙНЕР ДЛЯ КНОПКИ
+    html.Div(style={'display': 'flex', 'justifyContent': 'center', 'margin-bottom': '20px'}, children=[ # Добавил margin-bottom
+        html.Button('Скрыть/Показать оси XYZ', id='toggle-axes-button', n_clicks=0,
+                    style={'width': 'auto', 'padding': '10px 20px'}),
+        dcc.Store(id='axes-visibility-store', data={'visible': True})
+    ]),
 
-    # НОВЫЙ КОНТЕЙНЕР FLEXBOX ДЛЯ ГРАФИКА И УПРАВЛЕНИЯ
+    # КОНТЕЙНЕР FLEXBOX ДЛЯ ГРАФИКА И УПРАВЛЕНИЯ
     html.Div(style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'center', 'alignItems': 'flex-start', 'gap': '20px'}, children=[
-
+        
         # Контейнер для графика (слева)
-        dcc.Graph(id='hyperbolic-sphere-graph', style={'flexGrow': '1', 'height': '70vh', 'width': 'auto'}), # flexGrow, width auto
+        dcc.Graph(id='hyperbolic-sphere-graph', style={'flexGrow': '1', 'height': '70vh', 'width': 'auto'}),
 
         # Контейнер для всех элементов управления (справа)
         html.Div(style={'flexShrink': '0', 'width': '300px', 'padding': '20px', 'border': '1px solid #ccc', 'borderRadius': '8px'}, children=[
-            # КНОПКА СКРЫТИЯ/ПОКАЗА ОСЕЙ
-            html.Button('Скрыть/Показать оси XYZ', id='toggle-axes-button', n_clicks=0,
-                        style={'margin-bottom': '20px', 'width': '100%', 'padding': '10px 0'}), # Улучшенные стили кнопки
-            dcc.Store(id='axes-visibility-store', data={'visible': True}),
-
-            # СЛАЙДЕРЫ ДЛЯ КООРДИНАТ ЦЕНТРА
-            html.Label("Центр X", style={'margin-top': '10px', 'display': 'block'}), # Улучшенные стили для label
+            # СЛАЙДЕРЫ ДЛЯ КООРДИНАТ ЦЕНТРА (без кнопки здесь)
+            html.Label("Центр X", style={'margin-top': '0px', 'display': 'block'}), # Убрал margin-top для первого
             dcc.Slider(id='center-x-slider', min=-0.7, max=0.7, step=0.05, value=0.2, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-
+            
             html.Label("Центр Y", style={'margin-top': '10px', 'display': 'block'}),
             dcc.Slider(id='center-y-slider', min=-0.7, max=0.7, step=0.05, value=-0.1, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-
+            
             html.Label("Центр Z", style={'margin-top': '10px', 'display': 'block'}),
             dcc.Slider(id='center-z-slider', min=-0.7, max=0.7, step=0.05, value=0.3, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-
+            
             # СЛАЙДЕР РАЗМЕРА СФЕРЫ
             html.Label("Радиус сферы", style={'margin-top': '10px', 'display': 'block'}),
             dcc.Slider(id='radius-slider', min=0.1, max=0.8, step=0.05, value=0.4, marks={i/10: str(i/10) for i in range(1, 9)}),
 
-        ]) # Конец div с элементами управления
-    ]) # Конец flexbox контейнера
+        ])
+    ])
 ])
 
 # ==============================================================================
@@ -213,13 +215,13 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
     if button_id == 'toggle-axes-button':
         new_visibility_state = not current_axes_visibility_data['visible']
         new_axes_visibility_data = {'visible': new_visibility_state}
-
+    
     fig = create_sphere_figure(
         radius, cx, cy, cz,
         current_camera=current_camera,
         show_axes=new_axes_visibility_data['visible']
     )
-
+    
     return fig, new_axes_visibility_data
 
 # Добавлено для развертывания
