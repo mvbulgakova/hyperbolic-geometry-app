@@ -155,7 +155,7 @@ app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12p
     
     # КОНТЕЙНЕР ДЛЯ КНОПКИ
     html.Div(style={'display': 'flex', 'justifyContent': 'center', 'margin-bottom': '20px'}, children=[ # Добавил margin-bottom
-        html.Button('Скрыть/Показать оси XYZ', id='toggle-axes-button', n_clicks=0,
+        html.Button('Скрыть/показать оси XYZ', id='toggle-axes-button', n_clicks=0,
                     style={'width': 'auto', 'padding': '10px 20px'}),
         dcc.Store(id='axes-visibility-store', data={'visible': True})
     ]),
