@@ -9,18 +9,20 @@ from dash.dependencies import Input, Output, State
 # ==============================================================================
 def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera=None, show_axes=True):
     r = 1.0  # Радиус сферы-абсолюта (радиус модели Клейна)
-    center_hs = np.array([center_x, center_y, center_z])
+    center_hs = np.array([center_x, center_y, center_z]) # Центр гиперболической сферы (евклидовый)
 
     fig = go.Figure()
 
     # Проверка, чтобы сфера не выходила за пределы (визуальная)
     dist_from_origin_to_center = np.linalg.norm(center_hs)
-    if dist_from_origin_to_center + radius_hs >= r - 0.005:
-        radius_hs = r - dist_from_origin_to_center - 0.01
-        if radius_hs < 0.01:
+    # Максимально допустимый радиус, чтобы сфера не пересекала Абсолют
+    max_allowed_radius = r - dist_from_origin_to_center - 0.005 
+    if radius_hs >= max_allowed_radius:
+        radius_hs = max_allowed_radius
+        if radius_hs < 0.01: # Минимальный радиус, чтобы избежать вырождения
             radius_hs = 0.01
 
-    # Сфера-абсолют
+    # Сфера-абсолют (граничная сфера модели Клейна)
     phi_surf = np.linspace(0, 2*np.pi, 50)
     theta_surf = np.linspace(0, np.pi, 50)
     x_abs = r * np.outer(np.cos(phi_surf), np.sin(theta_surf))
@@ -32,7 +34,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         hoverinfo='none'
     ))
 
-    # Гиперболическая сфера - ИСПРАВЛЕНИЕ ЗДЕСЬ
+    # Гиперболическая сфера (евклидова сфера внутри модели)
     x_hs = center_hs[0] + radius_hs * np.outer(np.cos(phi_surf), np.sin(theta_surf))
     y_hs = center_hs[1] + radius_hs * np.outer(np.sin(phi_surf), np.sin(theta_surf))
     z_hs = center_hs[2] + radius_hs * np.outer(np.ones_like(phi_surf), np.cos(theta_surf))
@@ -42,15 +44,15 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         hoverinfo='none'
     ))
 
-    # Маркер центра
+    # Маркер центра гиперболической сферы
     fig.add_trace(go.Scatter3d(
         x=[center_hs[0]], y=[center_hs[1]], z=[center_hs[2]],
-        mode='markers', marker=dict(color='black', size=5, symbol='diamond'), name='Центр',
+        mode='markers', marker=dict(color='black', size=5, symbol='diamond'), name='Центр сферы',
         hoverinfo='none', showlegend=True
     ))
 
-    # Радиальные линии
-    num_lines = 50 
+    # Радиальные линии (геодезические, проходящие через центр сферы)
+    num_lines = 50
     
     indices = np.arange(0, num_lines, dtype=float) + 0.5
     phi_dirs = np.arccos(1 - 2 * indices / num_lines)
@@ -63,7 +65,13 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
             np.cos(phi_dirs[i])
         ])
 
-        intersect_point = center_hs + radius_hs * unit_dir_vec
+        # Начало линии - центр гиперболической сферы
+        p_start = center_hs
+        # Конечная точка линии - на Абсолюте
+        # Находим точку на Абсолюте в направлении unit_dir_vec от центра сферы.
+        # Это решается для t, где (center_hs + t * unit_dir_vec)^2 = r^2
+        # (center_hs . center_hs) + 2t (center_hs . unit_dir_vec) + t^2 (unit_dir_vec . unit_dir_vec) = r^2
+        # t^2 + 2t (center_hs . unit_dir_vec) + (center_hs . center_hs - r^2) = 0
         
         a = 1.0
         b = 2 * np.dot(center_hs, unit_dir_vec)
@@ -72,33 +80,81 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         discriminant = b**2 - 4*a*c
         
         if discriminant < 0:
-            continue
-            
+            continue # Нет пересечения с Абсолютом, линия не достигает границы.
+
+        # t_plus - это параметр для точки на Абсолюте
         t_plus = (-b + np.sqrt(discriminant)) / (2*a)
+        # t_minus - это параметр для другой точки на Абсолюте (в противоположном направлении)
+        t_minus = (-b - np.sqrt(discriminant)) / (2*a)
         
-        absolute_point = center_hs + t_plus * unit_dir_vec
+        # Определяем конечные точки хорды (гиперболической прямой)
+        # Она проходит через центр hs от одной границы до другой.
+        p_end1 = p_start + t_minus * unit_dir_vec
+        p_end2 = p_start + t_plus * unit_dir_vec
 
-        fig.add_trace(go.Scatter3d(
-            x=[center_hs[0], intersect_point[0]],
-            y=[center_hs[1], intersect_point[1]],
-            z=[center_hs[2], intersect_point[2]],
-            mode='lines', line=dict(color='red', width=4),
-            showlegend=False, hoverinfo='none'
-        ))
-        fig.add_trace(go.Scatter3d(
-            x=[intersect_point[0], absolute_point[0]],
-            y=[intersect_point[1], absolute_point[1]],
-            z=[intersect_point[2], absolute_point[2]],
-            mode='lines', line=dict(color='red', width=2, dash='dash'),
-            showlegend=False, hoverinfo='none'
-        ))
-        fig.add_trace(go.Scatter3d(
-            x=[intersect_point[0]], y=[intersect_point[1]], z=[intersect_point[2]],
-            mode='markers', marker=dict(color='white', size=3, line=dict(color='black', width=1)),
-            showlegend=False, hoverinfo='none'
-        ))
+        # Теперь нам нужно найти точки пересечения этой хорды [p_end1, p_end2]
+        # с зеленой гиперболической сферой (которая является евклидовой сферой с центром center_hs и радиусом radius_hs).
+        # Hормализованный вектор хорды от p_end1 к p_end2
+        vec_chord = p_end2 - p_end1
+        if np.linalg.norm(vec_chord) < 1e-6:
+            continue # Избежать деления на ноль
 
-    # ДОБАВЛЕНИЕ ТОНКИХ ОСЕЙ
+        # Пересчитываем параметры t для пересечения хорды с ЗЕЛЕНОЙ СФЕРОЙ
+        # Уравнение: (P_end1 + t_chord * vec_chord - center_hs)^2 = radius_hs^2
+        oc_to_line_start = p_end1 - center_hs
+        a_chord = np.dot(vec_chord, vec_chord)
+        b_chord = 2 * np.dot(oc_to_line_start, vec_chord)
+        c_chord = np.dot(oc_to_line_start, oc_to_line_start) - radius_hs**2
+
+        disc_chord = b_chord**2 - 4*a_chord*c_chord
+
+        if disc_chord < 0: # Хорда не пересекает зеленую сферу
+            fig.add_trace(go.Scatter3d(
+                x=[p_end1[0], p_end2[0]], y=[p_end1[1], p_end2[1]], z=[p_end1[2], p_end2[2]],
+                mode='lines', line=dict(color='#C80000', width=1.5), showlegend=False, hoverinfo='none' # Изменена толщина и цвет
+            ))
+            continue
+
+        t_entry_hs = (-b_chord - np.sqrt(disc_chord)) / (2*a_chord)
+        t_exit_hs = (-b_chord + np.sqrt(disc_chord)) / (2*a_chord)
+
+        # Точки пересечения хорды с зеленой сферой
+        point_entry_hs = p_end1 + t_entry_hs * vec_chord
+        point_exit_hs = p_end1 + t_exit_hs * vec_chord
+        
+        # --- ПОСТРОЕНИЕ СЕГМЕНТОВ ЛИНИЙ ---
+        # 1. От p_end1 (на Абсолюте) до point_entry_hs (сплошная)
+        # Убедимся, что segment не пустой и находится в пределах хорды [0,1]
+        if t_entry_hs > 1e-6: 
+            fig.add_trace(go.Scatter3d(
+                x=[p_end1[0], point_entry_hs[0]],
+                y=[p_end1[1], point_entry_hs[1]],
+                z=[p_end1[2], point_entry_hs[2]],
+                mode='lines', line=dict(color='#C80000', width=2), showlegend=False, hoverinfo='none' # Изменена толщина и цвет
+            ))
+        
+        # 2. От point_entry_hs до point_exit_hs (ПУНКТИРНАЯ - ВНУТРИ ГИПЕРБОЛИЧЕСКОЙ СФЕРЫ)
+        if t_exit_hs - t_entry_hs > 1e-6:
+            fig.add_trace(go.Scatter3d(
+                x=[point_entry_hs[0], point_exit_hs[0]],
+                y=[point_entry_hs[1], point_exit_hs[1]],
+                z=[point_entry_hs[2], point_exit_hs[2]],
+                mode='lines', line=dict(color='#C80000', width=1.5, dash='dash'), showlegend=False, hoverinfo='none' # Изменена толщина и цвет
+            ))
+        
+        # 3. От point_exit_hs до p_end2 (на Абсолюте) (сплошная)
+        if 1 - t_exit_hs > 1e-6:
+            fig.add_trace(go.Scatter3d(
+                x=[point_exit_hs[0], p_end2[0]],
+                y=[point_exit_hs[1], p_end2[1]],
+                z=[point_exit_hs[2], p_end2[2]],
+                mode='lines', line=dict(color='#C80000', width=2), showlegend=False, hoverinfo='none' # Изменена толщина и цвет
+            ))
+            
+        # Маркеры на поверхности зеленой сферы УДАЛЕНЫ
+
+
+    # --- ДОБАВЛЕНИЕ ТОНКИХ ОСЕЙ ---
     if show_axes:
         axis_length = r * 1.1
 
@@ -153,37 +209,31 @@ app = dash.Dash(__name__)
 app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12px', 'color': 'black'}, children=[
     html.H1("Интерактивная модель Бельтрами-Клейна", style={'textAlign': 'center'}),
     
-    # КОНТЕЙНЕР ДЛЯ КНОПКИ
-    html.Div(style={'display': 'flex', 'justifyContent': 'center', 'margin-bottom': '20px'}, children=[ # Добавил margin-bottom
-        html.Button('Скрыть/показать оси XYZ', id='toggle-axes-button', n_clicks=0,
-                    style={'width': 'auto', 'padding': '10px 20px'}),
+    # --- КНОПКА СКРЫТИЯ/ПОКАЗА ОСЕЙ (ПЕРЕМЕЩЕНА) ---
+    html.Div([
+        html.Button('Скрыть/Показать оси XYZ', id='toggle-axes-button', n_clicks=0,
+                    style={'margin-top': '20px', 'margin-left': 'auto', 'margin-right': 'auto', 'display': 'block', 'width': 'auto', 'padding': '10px 20px'}),
         dcc.Store(id='axes-visibility-store', data={'visible': True})
-    ]),
+    ], style={'width': '80%', 'margin': 'auto', 'text-align': 'center'}),
 
-    # КОНТЕЙНЕР FLEXBOX ДЛЯ ГРАФИКА И УПРАВЛЕНИЯ
-    html.Div(style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'center', 'alignItems': 'flex-start', 'gap': '20px'}, children=[
+    dcc.Graph(id='hyperbolic-sphere-graph', style={'height': '70vh'}),
+    
+    html.Div([
+        # СЛАЙДЕРЫ ДЛЯ КООРДИНАТ ЦЕНТРА
+        html.Label("Центр X"),
+        dcc.Slider(id='center-x-slider', min=-0.7, max=0.7, step=0.05, value=0.2, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
         
-        # Контейнер для графика (слева)
-        dcc.Graph(id='hyperbolic-sphere-graph', style={'flexGrow': '1', 'height': '70vh', 'width': 'auto'}),
+        html.Label("Центр Y"),
+        dcc.Slider(id='center-y-slider', min=-0.7, max=0.7, step=0.05, value=-0.1, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
+        
+        html.Label("Центр Z"),
+        dcc.Slider(id='center-z-slider', min=-0.7, max=0.7, step=0.05, value=0.3, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
+        
+        # СЛАЙДЕР РАЗМЕРА СФЕРЫ
+        html.Label("Радиус сферы"),
+        dcc.Slider(id='radius-slider', min=0.1, max=0.8, step=0.05, value=0.4, marks={i/10: str(i/10) for i in range(1, 9)}),
 
-        # Контейнер для всех элементов управления (справа)
-        html.Div(style={'flexShrink': '0', 'width': '300px', 'padding': '20px', 'border': '1px solid #ccc', 'borderRadius': '8px'}, children=[
-            # СЛАЙДЕРЫ ДЛЯ КООРДИНАТ ЦЕНТРА (без кнопки здесь)
-            html.Label("Центр X", style={'margin-top': '0px', 'display': 'block'}), # Убрал margin-top для первого
-            dcc.Slider(id='center-x-slider', min=-0.7, max=0.7, step=0.05, value=0.2, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-            
-            html.Label("Центр Y", style={'margin-top': '10px', 'display': 'block'}),
-            dcc.Slider(id='center-y-slider', min=-0.7, max=0.7, step=0.05, value=-0.1, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-            
-            html.Label("Центр Z", style={'margin-top': '10px', 'display': 'block'}),
-            dcc.Slider(id='center-z-slider', min=-0.7, max=0.7, step=0.05, value=0.3, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-            
-            # СЛАЙДЕР РАЗМЕРА СФЕРЫ
-            html.Label("Радиус сферы", style={'margin-top': '10px', 'display': 'block'}),
-            dcc.Slider(id='radius-slider', min=0.1, max=0.8, step=0.05, value=0.4, marks={i/10: str(i/10) for i in range(1, 9)}),
-
-        ])
-    ])
+    ], style={'width': '80%', 'margin': 'auto'})
 ])
 
 # ==============================================================================
@@ -223,6 +273,8 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
     )
     
     return fig, new_axes_visibility_data
+
+
 
 # Добавлено для развертывания
 server = app.server
