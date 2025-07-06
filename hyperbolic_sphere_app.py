@@ -71,7 +71,6 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         # Находим точку на Абсолюте в направлении unit_dir_vec от центра сферы.
         # Это решается для t, где (center_hs + t * unit_dir_vec)^2 = r^2
         # (center_hs . center_hs) + 2t (center_hs . unit_dir_vec) + t^2 (unit_dir_vec . unit_dir_vec) = r^2
-        # t^2 + 2t (center_hs . unit_dir_vec) + (center_hs . center_hs - r^2) = 0
         
         a = 1.0
         b = 2 * np.dot(center_hs, unit_dir_vec)
@@ -102,11 +101,22 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         # Пересчитываем параметры t для пересечения хорды с ЗЕЛЕНОЙ СФЕРОЙ
         # Уравнение: (P_end1 + t_chord * vec_chord - center_hs)^2 = radius_hs^2
         oc_to_line_start = p_end1 - center_hs
-        a_chord = np.dot(vec_chord, vec_chord)
+        a_chord = np.dot(oc_to_line_start, oc_to_line_start)
         b_chord = 2 * np.dot(oc_to_line_start, vec_chord)
-        c_chord = np.dot(oc_to_line_start, oc_to_line_start) - radius_hs**2
+        c_chord = np.dot(vec_chord, vec_chord) - radius_hs**2 # Ошибка здесь, было `np.dot(vec_chord, vec_chord)` вместо `a_chord`
 
-        disc_chord = b_chord**2 - 4*a_chord*c_chord
+        # Corrected quadratic equation for intersection of ray from p_end1 along vec_chord with sphere center_hs and radius_hs
+        # ( (p_end1 + t * vec_chord) - center_hs ) . ( (p_end1 + t * vec_chord) - center_hs ) = radius_hs^2
+        # Let O_prime = p_end1 - center_hs
+        # (O_prime + t * vec_chord) . (O_prime + t * vec_chord) = radius_hs^2
+        # O_prime.O_prime + 2*t*(O_prime.vec_chord) + t^2*(vec_chord.vec_chord) = radius_hs^2
+        # (vec_chord.vec_chord)*t^2 + (2*O_prime.vec_chord)*t + (O_prime.O_prime - radius_hs^2) = 0
+        a_sphere_intersect = np.dot(vec_chord, vec_chord)
+        b_sphere_intersect = 2 * np.dot(oc_to_line_start, vec_chord)
+        c_sphere_intersect = np.dot(oc_to_line_start, oc_to_line_start) - radius_hs**2
+
+
+        disc_chord = b_sphere_intersect**2 - 4*a_sphere_intersect*c_sphere_intersect
 
         if disc_chord < 0: # Хорда не пересекает зеленую сферу
             fig.add_trace(go.Scatter3d(
@@ -115,8 +125,8 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
             ))
             continue
 
-        t_entry_hs = (-b_chord - np.sqrt(disc_chord)) / (2*a_chord)
-        t_exit_hs = (-b_chord + np.sqrt(disc_chord)) / (2*a_chord)
+        t_entry_hs = (-b_sphere_intersect - np.sqrt(disc_chord)) / (2*a_sphere_intersect)
+        t_exit_hs = (-b_sphere_intersect + np.sqrt(disc_chord)) / (2*a_sphere_intersect)
 
         # Точки пересечения хорды с зеленой сферой
         point_entry_hs = p_end1 + t_entry_hs * vec_chord
@@ -125,7 +135,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         # --- ПОСТРОЕНИЕ СЕГМЕНТОВ ЛИНИЙ ---
         # 1. От p_end1 (на Абсолюте) до point_entry_hs (сплошная)
         # Убедимся, что segment не пустой и находится в пределах хорды [0,1]
-        if t_entry_hs > 1e-6: 
+        if t_entry_hs > 1e-6: # Убедимся, что начальная точка не прямо на сфере
             fig.add_trace(go.Scatter3d(
                 x=[p_end1[0], point_entry_hs[0]],
                 y=[p_end1[1], point_entry_hs[1]],
@@ -134,7 +144,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
             ))
         
         # 2. От point_entry_hs до point_exit_hs (ПУНКТИРНАЯ - ВНУТРИ ГИПЕРБОЛИЧЕСКОЙ СФЕРЫ)
-        if t_exit_hs - t_entry_hs > 1e-6:
+        if t_exit_hs - t_entry_hs > 1e-6: # Убедимся, что сегмент имеет ненулевую длину
             fig.add_trace(go.Scatter3d(
                 x=[point_entry_hs[0], point_exit_hs[0]],
                 y=[point_entry_hs[1], point_exit_hs[1]],
@@ -143,7 +153,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
             ))
         
         # 3. От point_exit_hs до p_end2 (на Абсолюте) (сплошная)
-        if 1 - t_exit_hs > 1e-6:
+        if 1 - t_exit_hs > 1e-6: # Убедимся, что конечная точка не прямо на сфере
             fig.add_trace(go.Scatter3d(
                 x=[point_exit_hs[0], p_end2[0]],
                 y=[point_exit_hs[1], p_end2[1]],
@@ -209,31 +219,36 @@ app = dash.Dash(__name__)
 app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12px', 'color': 'black'}, children=[
     html.H1("Интерактивная модель Бельтрами-Клейна", style={'textAlign': 'center'}),
     
-    # --- КНОПКА СКРЫТИЯ/ПОКАЗА ОСЕЙ (ПЕРЕМЕЩЕНА) ---
+    # --- КНОПКА СКРЫТИЯ/ПОКАЗА ОСЕЙ ---
     html.Div([
-        html.Button('Скрыть/показать оси XYZ', id='toggle-axes-button', n_clicks=0,
+        html.Button('Скрыть/Показать оси XYZ', id='toggle-axes-button', n_clicks=0,
                     style={'margin-top': '20px', 'margin-left': 'auto', 'margin-right': 'auto', 'display': 'block', 'width': 'auto', 'padding': '10px 20px'}),
         dcc.Store(id='axes-visibility-store', data={'visible': True})
     ], style={'width': '80%', 'margin': 'auto', 'text-align': 'center'}),
 
-    dcc.Graph(id='hyperbolic-sphere-graph', style={'height': '70vh'}),
-    
-    html.Div([
-        # СЛАЙДЕРЫ ДЛЯ КООРДИНАТ ЦЕНТРА
-        html.Label("Центр X"),
-        dcc.Slider(id='center-x-slider', min=-0.7, max=0.7, step=0.05, value=0.2, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
+    # --- КОНТЕЙНЕР FLEXBOX ДЛЯ ГРАФИКА И УПРАВЛЕНИЯ ---
+    html.Div(style={'display': 'flex', 'flexDirection': 'row', 'justifyContent': 'center', 'alignItems': 'flex-start', 'gap': '20px'}, children=[
         
-        html.Label("Центр Y"),
-        dcc.Slider(id='center-y-slider', min=-0.7, max=0.7, step=0.05, value=-0.1, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-        
-        html.Label("Центр Z"),
-        dcc.Slider(id='center-z-slider', min=-0.7, max=0.7, step=0.05, value=0.3, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
-        
-        # СЛАЙДЕР РАЗМЕРА СФЕРЫ
-        html.Label("Радиус сферы"),
-        dcc.Slider(id='radius-slider', min=0.1, max=0.8, step=0.05, value=0.4, marks={i/10: str(i/10) for i in range(1, 9)}),
+        # Контейнер для графика (слева)
+        dcc.Graph(id='hyperbolic-sphere-graph', style={'flexGrow': '1', 'height': '70vh', 'width': 'auto'}),
 
-    ], style={'width': '80%', 'margin': 'auto'})
+        # Контейнер для всех элементов управления (справа)
+        html.Div(style={'flexShrink': '0', 'width': '300px', 'padding': '20px', 'border': '1px solid #ccc', 'borderRadius': '8px'}, children=[
+            # СЛАЙДЕРЫ ДЛЯ КООРДИНАТ ЦЕНТРА
+            html.Label("Центр X", style={'margin-top': '0px', 'display': 'block'}),
+            dcc.Slider(id='center-x-slider', min=-0.7, max=0.7, step=0.05, value=0.2, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
+            
+            html.Label("Центр Y", style={'margin-top': '10px', 'display': 'block'}),
+            dcc.Slider(id='center-y-slider', min=-0.7, max=0.7, step=0.05, value=-0.1, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
+            
+            html.Label("Центр Z", style={'margin-top': '10px', 'display': 'block'}),
+            dcc.Slider(id='center-z-slider', min=-0.7, max=0.7, step=0.05, value=0.3, marks={i/10: str(i/10) for i in range(-6, 7, 2)}),
+            
+            # СЛАЙДЕР РАЗМЕРА СФЕРЫ
+            html.Label("Радиус сферы", style={'margin-top': '10px', 'display': 'block'}),
+            dcc.Slider(id='radius-slider', min=0.1, max=0.8, step=0.05, value=0.4, marks={i/10: str(i/10) for i in range(1, 9)}),
+        ])
+    ])
 ])
 
 # ==============================================================================
@@ -273,8 +288,5 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
     )
     
     return fig, new_axes_visibility_data
-
-
-
 # Добавлено для развертывания
 server = app.server
