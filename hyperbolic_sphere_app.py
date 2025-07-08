@@ -1,4 +1,4 @@
-# sphere_standalone.py
+# hyperbolic_sphere_app.py (или sphere_standalone.py для развертывания)
 
 import plotly.graph_objects as go
 import numpy as np
@@ -17,7 +17,6 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
 
     # Проверка, чтобы сфера не выходила за пределы (визуальная)
     dist_from_origin_to_center = np.linalg.norm(center_hs)
-    # Максимально допустимый радиус, чтобы сфера не пересекала Абсолют
     max_allowed_radius = r - dist_from_origin_to_center - 0.005 
     if radius_hs >= max_allowed_radius:
         radius_hs = max_allowed_radius
@@ -37,7 +36,6 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
     ))
 
     # Гиперболическая сфера (евклидова сфера внутри модели)
-    # Используем phi_surf, theta_surf для согласованной генерации поверхности
     x_hs = center_hs[0] + radius_hs * np.outer(np.cos(phi_surf), np.sin(theta_surf))
     y_hs = center_hs[1] + radius_hs * np.outer(np.sin(phi_surf), np.sin(theta_surf))
     z_hs = center_hs[2] + radius_hs * np.outer(np.ones_like(phi_surf), np.cos(theta_surf))
@@ -161,9 +159,9 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
     return fig
 
 # ==============================================================================
-# 2. СОЗДАНИЕ ПРИЛОЖЕНИЯ DASH (АВТОНОМНЫЙ ЗАПУСК)
+# 2. СОЗДАНИЕ ПРИЛОЖЕНИЯ DASH
 # ==============================================================================
-app = dash.Dash(__name__) # <-- Создание Dash приложения здесь
+app = dash.Dash(__name__)
 
 app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12px', 'color': 'black'}, children=[
     html.H1("Интерактивная модель Бельтрами-Клейна (Гиперболическая Сфера)", style={'textAlign': 'center'}),
@@ -203,7 +201,7 @@ app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12p
 # ==============================================================================
 # 3. ЛОГИКА ОБНОВЛЕНИЯ ГРАФИКА
 # ==============================================================================
-@app.callback( # <-- Теперь @app.callback
+@app.callback(
     Output('hyperbolic-sphere-graph', 'figure'),
     Output('axes-visibility-store', 'data'),
     [Input('radius-slider', 'value'),
@@ -238,4 +236,4 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
 # 4. ЗАПУСК ПРИЛОЖЕНИЯ
 # ==============================================================================
 if __name__ == '__main__':
-    app.run(debug=True) # <-- Используем app.run()
+    app.run_server(debug=True)
