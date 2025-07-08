@@ -1,1 +1,1 @@
-web: gunicorn app:server --bind 0.0.0.0:$PORT
+gunicorn hyperbolic_sphere_app:server --bind 0.0.0.0:$PORT
