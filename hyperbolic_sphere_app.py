@@ -1,5 +1,3 @@
-# hyperbolic_sphere_app.py (или sphere_standalone.py для развертывания)
-
 import plotly.graph_objects as go
 import numpy as np
 import dash
@@ -17,6 +15,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
 
     # Проверка, чтобы сфера не выходила за пределы (визуальная)
     dist_from_origin_to_center = np.linalg.norm(center_hs)
+    # Максимально допустимый радиус, чтобы сфера не пересекала Абсолют
     max_allowed_radius = r - dist_from_origin_to_center - 0.005 
     if radius_hs >= max_allowed_radius:
         radius_hs = max_allowed_radius
@@ -235,5 +234,6 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
 # ==============================================================================
 # 4. ЗАПУСК ПРИЛОЖЕНИЯ
 # ==============================================================================
+server = app.server # <-- Добавили эту строку
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run(debug=True) # <-- Изменили app.run_server на app.run
