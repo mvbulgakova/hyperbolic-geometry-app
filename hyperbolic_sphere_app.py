@@ -1,3 +1,6 @@
+# Код из вашего файла sphere.py
+# Я лишь немного изменил его, чтобы он стал частью общего приложения
+
 import plotly.graph_objects as go
 import numpy as np
 import dash
