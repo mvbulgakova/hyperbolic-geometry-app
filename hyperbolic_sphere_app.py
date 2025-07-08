@@ -186,7 +186,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         scene_settings['camera_eye'] = initial_camera_eye
 
     fig.update_layout(
-        title='Модель Бельтрами-Клейна: Гиперболическая сфера',
+        title='Интерактивная модель гиперболической сферы',
         scene=scene_settings,
         margin=dict(l=0, r=0, b=0, t=40),
         legend=dict(x=0.8, y=0.9),
