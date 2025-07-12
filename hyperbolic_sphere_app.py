@@ -4,16 +4,14 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 
-# ==============================================================================
 # 1. ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ГРАФИКА
-# ==============================================================================
 def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera=None, show_axes=True):
     r = 1.0  # Радиус сферы-абсолюта
     center_hs = np.array([center_x, center_y, center_z])
 
     fig = go.Figure()
 
-    # Сфера-абсолют (граничная сфера модели Клейна)
+    # Сфера-абсолют (граничная сфера)
     phi_surf = np.linspace(0, 2 * np.pi, 50)
     theta_surf = np.linspace(0, np.pi, 50)
     x_abs = r * np.outer(np.cos(phi_surf), np.sin(theta_surf))
@@ -25,9 +23,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         hoverinfo='none'
     ))
 
-    # =========================================================================
     # ГИПЕРБОЛИЧЕСКАЯ СФЕРА (ЭЛЛИПСОИД В МОДЕЛИ БЕЛЬТРАМИ-КЛЕЙНА)
-    # =========================================================================
     dist_from_origin = np.linalg.norm(center_hs)
     is_sphere = dist_from_origin < 1e-6
     
@@ -85,9 +81,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         hoverinfo='none', showlegend=True
     ))
 
-    # =========================================================================
     # ГЕОДЕЗИЧЕСКИЕ ЛИНИИ
-    # =========================================================================
     num_lines = 50
     indices = np.arange(0, num_lines, dtype=float) + 0.5
     phi_dirs = np.arccos(1 - 2 * indices / num_lines)
@@ -116,7 +110,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         vec_chord = p_end2 - p_end1
         if np.linalg.norm(vec_chord) < 1e-6: continue
 
-        # --- Пересечение хорды с эллипсоидом ---
+        # Пересечение хорды с эллипсоидом
         # Уравнение: (P_start + t*V_dir - C_e)^T * M_inv * (P_start + t*V_dir - C_e) = 1
         # M_inv = R * D_inv * R_T, где D_inv - диагональная матрица обратных квадратов полуосей
         D_inv = np.diag([1/radius_perp**2, 1/radius_perp**2, 1/radius_parallel**2])
@@ -144,7 +138,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
         point_entry_hs = p_end1 + t_entry * vec_chord
         point_exit_hs = p_end1 + t_exit * vec_chord
         
-        # --- ПОСТРОЕНИЕ СЕГМЕНТОВ ЛИНИЙ ---
+        # ПОСТРОЕНИЕ СЕГМЕНТОВ ЛИНИЙ
         if t_entry > 1e-6:
              fig.add_trace(go.Scatter3d(
                 x=[p_end1[0], point_entry_hs[0]], y=[p_end1[1], point_entry_hs[1]], z=[p_end1[2], point_entry_hs[2]],
@@ -163,7 +157,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
                 mode='lines', line=dict(color='#C80000', width=2), showlegend=False, hoverinfo='none'
             ))
 
-    # --- ДОБАВЛЕНИЕ ТОНКИХ ОСЕЙ ---
+    # ДОБАВЛЕНИЕ ТОНКИХ ОСЕЙ (для наглядности изменения положения сферы)
     if show_axes:
         axis_length = r * 1.1
         fig.add_trace(go.Scatter3d(x=[-axis_length, axis_length], y=[0,0], z=[0,0], mode='lines', line=dict(color='red', width=2), showlegend=False, hoverinfo='none'))
@@ -194,9 +188,7 @@ def create_sphere_figure(radius_hs, center_x, center_y, center_z, current_camera
     )
     return fig
 
-# ==============================================================================
 # 2. СОЗДАНИЕ ПРИЛОЖЕНИЯ DASH
-# ==============================================================================
 app = dash.Dash(__name__)
 
 app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12px', 'color': 'black'}, children=[
@@ -228,9 +220,7 @@ app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'fontSize': '12p
     ])
 ])
 
-# ==============================================================================
-# 3. ЛОГИКА ОБНОВЛЕНИЯ ГРАФИКА
-# ==============================================================================
+# 3. ЛОГИКА ОБНОВЛЕНИЯ ГРАФИКА (как и везде)
 @app.callback(
     Output('hyperbolic-sphere-graph', 'figure'),
     Output('axes-visibility-store', 'data'),
@@ -262,9 +252,8 @@ def update_figure(radius, cx, cy, cz, n_clicks, relayoutData, current_axes_visib
     )
     
     return fig, new_axes_visibility_data
-# ==============================================================================
+
 # 4. ЗАПУСК ПРИЛОЖЕНИЯ
-# ==============================================================================
-server = app.server # <-- Добавили эту строку
+server = app.server 
 if __name__ == '__main__':
-    app.run(debug=True) # <-- Изменили app.run_server на app.run
+    app.run(debug=True)
