@@ -11,7 +11,7 @@ source.exclude_dirs = .github,.git,__pycache__,.buildozer,bin
 version = 1.0.0
 
 # flask has a p4a recipe; numpy has a p4a recipe; no plotly needed server-side
-requirements = python3,kivy==2.3.0,flask,numpy
+requirements = python3,kivy,flask,numpy
 
 android.permissions = INTERNET
 android.api = 33
