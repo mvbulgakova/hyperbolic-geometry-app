@@ -1,0 +1,74 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - android-unified-app
+      - "claude/**"
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build debug APK
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            git zip unzip \
+            autoconf libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libffi-dev libssl-dev \
+            libltdl-dev lld
+
+      - name: Install Buildozer and Cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython
+
+      - name: Download Plotly.js for bundling
+        run: |
+          mkdir -p static
+          wget -q --retry-connrefused --waitretry=5 --tries=5 \
+            https://cdn.plot.ly/plotly-2.27.0.min.js \
+            -O static/plotly.min.js
+          echo "plotly.min.js: $(du -sh static/plotly.min.js)"
+
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-v1
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
+      - name: Build debug APK
+        run: buildozer android debug
+        timeout-minutes: 90
+
+      - name: List artifacts
+        run: find bin/ -name "*.apk" -exec ls -lh {} \; 2>/dev/null || echo "No APKs in bin/"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperbolic-geometry-debug-apk
+          path: bin/*.apk
+          retention-days: 30
+          if-no-files-found: error
