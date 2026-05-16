@@ -56,7 +56,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-v1
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-v4
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
@@ -77,16 +77,25 @@ jobs:
           ln -sf "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" \
             "$SDK_DIR/tools/bin/sdkmanager"
 
-          # Принимаем все лицензии
+          # Явно записываем hash-суммы лицензий — sdkmanager проверяет их файлы
+          mkdir -p "$SDK_DIR/licenses"
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n8933bad161af4178b1185d1a37fbf41ea5269c55\n' \
+            > "$SDK_DIR/licenses/android-sdk-license"
+          printf '\n84831b9409646a918e30573bab4c9c91346d8abd\n' \
+            > "$SDK_DIR/licenses/android-sdk-preview-license"
+
+          # Также принимаем интерактивно (с явным sdk_root чтобы не потерять путь)
           mkdir -p "$HOME/.android"
           touch "$HOME/.android/repositories.cfg"
-          yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$SDK_DIR" --licenses 2>/dev/null || true
 
           # Устанавливаем нужные пакеты
-          yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" \
+          "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$SDK_DIR" \
             "platform-tools" \
             "build-tools;37.0.0" \
-            "platforms;android-33" || true
+            "platforms;android-33" 2>&1 | grep -v "^$" || true
 
       - name: Build debug APK
         env:
