@@ -17,22 +17,18 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Gradle
+      - name: Install Android SDK components
         run: |
-          curl -L -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-8.4-bin.zip"
-          unzip -q /tmp/gradle.zip -d $HOME/gradle-dist
-          echo "$HOME/gradle-dist/gradle-8.4/bin" >> $GITHUB_PATH
-
-      - name: Generate Gradle wrapper
-        working-directory: android
-        run: gradle wrapper --gradle-version 8.4
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-34" \
+            "build-tools;34.0.0" 2>/dev/null || true
 
       - name: Build APK
         working-directory: android
         run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
