@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Гиперболическая геометрия</title>
+  <script src="/static/plotly.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    #header {
+      background: #1565C0;
+      color: white;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: bold;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    #plot-wrap {
+      flex: 1;
+      min-height: 0;
+      background: white;
+    }
+
+    #plot { width: 100%; height: 100%; }
+
+    #spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.55);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    #controls {
+      background: white;
+      border-top: 1px solid #ddd;
+      padding: 10px 14px 12px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      max-height: 42vh;
+    }
+
+    .row {
+      margin-bottom: 8px;
+    }
+
+    .lbl {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #444;
+      margin-bottom: 3px;
+    }
+
+    .val { font-weight: bold; color: #1565C0; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 5px;
+      background: #c8d4e8;
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1565C0;
+      cursor: pointer;
+    }
+
+    #toggle-btn {
+      display: block;
+      width: 100%;
+      padding: 9px;
+      background: #1565C0;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    #toggle-btn:active { background: #0d47a1; }
+  </style>
+</head>
+<body>
+  <div id="header">Модель Бельтрами–Клейна</div>
+
+  <div id="plot-wrap" style="position:relative;">
+    <div id="plot"></div>
+    <div id="spinner">Вычисление…</div>
+  </div>
+
+  <div id="controls">
+    <div class="row">
+      <div class="lbl"><span>Центр X</span><span class="val" id="cx-v">0.20</span></div>
+      <input type="range" id="cx" min="-0.6" max="0.6" step="0.05" value="0.2">
+    </div>
+    <div class="row">
+      <div class="lbl"><span>Центр Y</span><span class="val" id="cy-v">-0.10</span></div>
+      <input type="range" id="cy" min="-0.6" max="0.6" step="0.05" value="-0.1">
+    </div>
+    <div class="row">
+      <div class="lbl"><span>Центр Z</span><span class="val" id="cz-v">0.30</span></div>
+      <input type="range" id="cz" min="-0.6" max="0.6" step="0.05" value="0.3">
+    </div>
+    <div class="row">
+      <div class="lbl"><span>Евклидов радиус</span><span class="val" id="r-v">0.40</span></div>
+      <input type="range" id="r" min="0.05" max="0.8" step="0.05" value="0.4">
+    </div>
+    <button id="toggle-btn">Скрыть / показать оси XYZ</button>
+  </div>
+
+  <script>
+    var showAxes = true;
+    var camera = null;
+    var pending = null;
+    var inFlight = false;
+
+    function fmt(v) { return parseFloat(v).toFixed(2); }
+
+    ['cx','cy','cz','r'].forEach(function(id) {
+      var suffix = id === 'r' ? '-v' : '-v';
+      document.getElementById(id).addEventListener('input', function() {
+        document.getElementById(id + '-v').textContent = fmt(this.value);
+        schedule();
+      });
+    });
+
+    document.getElementById('toggle-btn').addEventListener('click', function() {
+      showAxes = !showAxes;
+      schedule();
+    });
+
+    function schedule() {
+      if (inFlight) { pending = true; return; }
+      fetchFigure();
+    }
+
+    function fetchFigure() {
+      inFlight = true;
+      pending = false;
+      document.getElementById('spinner').style.display = 'block';
+
+      var cx = document.getElementById('cx').value;
+      var cy = document.getElementById('cy').value;
+      var cz = document.getElementById('cz').value;
+      var r  = document.getElementById('r').value;
+      var url = '/api/figure?cx=' + cx + '&cy=' + cy + '&cz=' + cz +
+                '&radius=' + r + '&show_axes=' + (showAxes ? '1' : '0');
+
+      fetch(url)
+        .then(function(resp) { return resp.json(); })
+        .then(function(fig) {
+          if (camera) {
+            fig.layout.scene = fig.layout.scene || {};
+            fig.layout.scene.camera = camera;
+          }
+          Plotly.react('plot', fig.data, fig.layout, {responsive: true, scrollZoom: true});
+
+          var plotDiv = document.getElementById('plot');
+          plotDiv.removeAllListeners && plotDiv.removeAllListeners('plotly_relayout');
+          plotDiv.on('plotly_relayout', function(ev) {
+            if (ev && ev['scene.camera']) camera = ev['scene.camera'];
+          });
+        })
+        .catch(function(e) { console.error(e); })
+        .finally(function() {
+          document.getElementById('spinner').style.display = 'none';
+          inFlight = false;
+          if (pending) fetchFigure();
+        });
+    }
+
+    fetchFigure();
+  </script>
+</body>
+</html>
