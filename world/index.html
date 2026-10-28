@@ -25,6 +25,7 @@ html,body{height:100%;margin:0;background:var(--ink);color:var(--fg);font-family
 canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 #ui{position:fixed;inset:0;pointer-events:none}
+#ui::before{content:"";position:absolute;left:0;right:0;top:0;height:170px;background:linear-gradient(rgba(9,11,22,.78),rgba(9,11,22,0));pointer-events:none}
 #ui>*{pointer-events:auto}
 #top{position:absolute;left:calc(16px + env(safe-area-inset-left,0px));top:calc(14px + env(safe-area-inset-top,0px));max-width:min(620px,calc(100vw - 32px));display:flex;flex-direction:column;gap:4px;pointer-events:none}
 #top>*{pointer-events:auto}
@@ -342,7 +343,7 @@ void main(){
 // Плоскость {5,4}: вертикальные зеркала треугольника группы [5,4], пол x3 = 0.
 const FS_PLANE = HEAD + `
 uniform vec4 uM[3]; uniform vec4 uE1; uniform vec4 uE2; uniform float uCamPar; uniform float uLampH;
-const vec3 FOG=vec3(0.13,0.14,0.21);
+const vec3 FOG=vec3(0.20,0.21,0.30);
 float map(vec4 p){
   float d=asinh(p.z); gId=0;
   float a=md(p,uE1), b=md(p,uE2);
