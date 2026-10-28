@@ -1,0 +1,94 @@
+% Курсовая работа, черновик 4 (27 октября 2026). Компилировать XeLaTeX:
+%   latexmk -xelatex main.tex
+% Оформление по ГОСТ 7.32-2017: поля 30/15/20/20 мм, 14 пт, полуторный интервал,
+% абзацный отступ 1,25 см, заголовки структурных элементов прописными по центру.
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage[no-math]{fontspec}
+\setmainfont{Liberation Serif}  % метрически совпадает с Times New Roman; при наличии можно поставить Times New Roman
+\setmonofont{Liberation Mono}[Scale=0.9]
+\usepackage{polyglossia}
+\setdefaultlanguage{russian}
+\setotherlanguage{english}
+
+\usepackage[left=30mm,right=15mm,top=20mm,bottom=20mm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\parindent}{1.25cm}
+\setlength{\emergencystretch}{3em}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*,labelindent=\parindent}
+\usepackage{array}
+\usepackage{caption}
+\captionsetup[figure]{name=Рисунок,labelsep=endash,justification=centering,font={onehalfspacing}}
+\captionsetup[table]{name=Таблица,labelsep=endash,justification=raggedright,singlelinecheck=false}
+\usepackage{fancyvrb}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+
+% Заголовки разделов: с абзацного отступа, полужирные, без точки; каждый раздел с новой страницы
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\bfseries}{\hspace*{\parindent}\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalfont\bfseries}{\hspace*{\parindent}\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{0pt}{12pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+\newcommand{\sectionbreak}{\clearpage}
+
+% Заголовки структурных элементов: прописными по центру, в содержании без номера
+\newcommand{\structsection}[1]{%
+  \clearpage
+  \phantomsection
+  \addcontentsline{toc}{section}{#1}%
+  \begin{center}\bfseries #1\end{center}\vspace{6pt}}
+
+\usepackage{tocloft}
+\renewcommand{\cfttoctitlefont}{\hfill\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftsecfont}{\normalfont}
+\renewcommand{\cftsecpagefont}{\normalfont}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\contentsname}{СОДЕРЖАНИЕ}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Теорема}[section]
+\newtheorem{lemma}[theorem]{Лемма}
+\newtheorem{corollary}[theorem]{Следствие}
+\newtheorem{proposition}[theorem]{Предложение}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Определение}
+\newtheorem{task}{Задача}[section]
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Замечание}
+\renewcommand{\qedsymbol}{$\blacksquare$}
+
+\newcommand{\sk}[2]{\langle #1,#2\rangle}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Hb}{\mathbb{H}}
+\DeclareMathOperator{\ch}{ch}
+\DeclareMathOperator{\sh}{sh}
+\DeclareMathOperator{\thh}{th}
+\DeclareMathOperator{\arcth}{arth}
+\newcommand{\todo}[1]{\textbf{[#1]}}
+
+\begin{document}
+
+\input{titul}
+
+\begin{center}\bfseries СОДЕРЖАНИЕ\end{center}
+\makeatletter\@starttoc{toc}\makeatother
+
+\input{vvedenie}
+\input{glava1}
+\input{glava2}
+\input{glava3}
+\input{glava4}
+\input{glava5}
+\input{glava6}
+\input{glava7}
+\input{zaklyuchenie}
+
+\end{document}
