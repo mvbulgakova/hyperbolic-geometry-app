@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Прогулка по Лобачевскому</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles/app.css">
+</head>
+<body>
+<canvas id="gl" aria-label="Трёхмерная сцена в пространстве Лобачевского"></canvas>
+<div id="ui">
+  <header id="top">
+    <div class="brand">Пространство Лобачевского · модель Кэли — Клейна</div>
+    <h1 id="wname">Додекаэдры с прямыми углами</h1>
+    <div id="wsub" class="mono"></div>
+    <nav id="worlds" aria-label="Миры"></nav>
+  </header>
+  <aside id="panel">
+    <button id="ptoggle" aria-expanded="true">Об этом мире <span>−</span></button>
+    <div id="pbody">
+      <p id="wdesc"></p>
+      <div id="wformula" class="formula"></div>
+      <h3>Попробуйте</h3>
+      <ul id="wtasks"></ul>
+      <div id="stools" hidden>
+        <h3>Задание</h3>
+        <p style="margin:6px 0 0">Доберитесь до золотого сундука у дома с красной крышей. Он прямо по курсу, за охраной.</p>
+        <p id="sres" style="margin:6px 0 0;color:var(--brass)"></p>
+        <button class="btn" id="srestart" style="margin-top:8px">Начать заново</button>
+      </div>
+      <div id="mtools" hidden>
+        <h3>Инструменты</h3>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" id="bflagp">Поставить флажок <span class="mono">(F)</span></button>
+          <button class="btn" id="bclear">Убрать <span class="mono">(X)</span></button>
+        </div>
+        <label class="ctl" style="margin-top:8px">Сторона квадрата <output id="sout">0,60</output>
+          <input type="range" id="side" min="0.2" max="1.6" step="0.05" value="0.6"></label>
+        <button class="btn" id="bsquare" style="margin-top:6px">Пройти квадрат</button>
+        <p id="result" style="margin:8px 0 0;color:var(--fg)"></p>
+      </div>
+      <label class="ctl" id="hrow">Высота глаз <output id="hout"></output>
+        <input type="range" id="height" min="0.05" max="2.5" step="0.01" value="0.45"></label>
+      <label class="ctl">Видимость <output id="fout"></output>
+        <input type="range" id="fog" min="2" max="30" step="0.1" value="5.5"></label>
+      <label class="check"><input type="checkbox" id="glass" checked> Стёкла в стенах</label>
+      <div class="row">
+        <button class="btn" id="reset">К началу <span class="mono">(R)</span></button>
+        <button class="btn" id="fs">Во весь экран</button>
+      </div>
+    </div>
+  </aside>
+  <div id="stats" class="mono"></div>
+  <div id="alertwrap" hidden><span>Тревога</span><div id="alertbar"><div id="alertfill"></div></div></div>
+  <div id="msg" hidden></div>
+  <div id="hint"></div>
+  <div id="mapwrap" hidden><canvas id="map" width="400" height="400"></canvas><div class="cap">Вид сверху в модели Кэли — Клейна</div></div>
+  <div id="joy"><div id="knob"></div></div>
+  <div id="vbtns"><button id="bflag" aria-label="Флажок">⚑</button><button id="bup" aria-label="Вверх">▲</button><button id="bdown" aria-label="Вниз">▼</button></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
