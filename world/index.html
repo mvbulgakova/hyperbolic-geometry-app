@@ -66,6 +66,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--glass);outline-
 #joy{position:absolute;left:calc(24px + env(safe-area-inset-left,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;border:1px solid var(--line);background:rgba(12,14,28,.4);display:none;touch-action:none}
 #knob{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:var(--brass);opacity:.8}
 #vbtns{position:absolute;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));display:none;flex-direction:column;gap:10px}
+#vbtns button#bflag{display:none}
+@media (pointer:coarse){#vbtns button#bflag{display:block}}
 #vbtns button{width:52px;height:52px;border-radius:50%;border:1px solid var(--line);background:rgba(12,14,28,.6);color:var(--fg);font-size:18px;touch-action:none}
 #err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:16px;line-height:1.6;background:var(--ink)}
 @media (pointer:coarse){
@@ -105,10 +107,21 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--glass);outline-
       <div id="wformula" class="formula"></div>
       <h3>Попробуйте</h3>
       <ul id="wtasks"></ul>
-      <label class="ctl" id="hrow">Высота над полом <output id="hout"></output>
+      <div id="mtools" hidden>
+        <h3>Инструменты</h3>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" id="bflagp">Поставить флажок <span class="mono">(F)</span></button>
+          <button class="btn" id="bclear">Убрать <span class="mono">(X)</span></button>
+        </div>
+        <label class="ctl" style="margin-top:8px">Сторона квадрата <output id="sout">0,60</output>
+          <input type="range" id="side" min="0.2" max="1.6" step="0.05" value="0.6"></label>
+        <button class="btn" id="bsquare" style="margin-top:6px">Пройти квадрат</button>
+        <p id="result" style="margin:8px 0 0;color:var(--fg)"></p>
+      </div>
+      <label class="ctl" id="hrow">Высота глаз <output id="hout"></output>
         <input type="range" id="height" min="0.05" max="2.5" step="0.01" value="0.45"></label>
       <label class="ctl">Видимость <output id="fout"></output>
-        <input type="range" id="fog" min="2" max="12" step="0.1" value="5.5"></label>
+        <input type="range" id="fog" min="2" max="30" step="0.1" value="5.5"></label>
       <label class="check"><input type="checkbox" id="glass" checked> Стёкла в стенах</label>
       <div class="row">
         <button class="btn" id="reset">К началу <span class="mono">(R)</span></button>
@@ -120,45 +133,51 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--glass);outline-
   <div id="hint"></div>
   <div id="mapwrap" hidden><canvas id="map" width="400" height="400"></canvas><div class="cap">Вид сверху в модели Кэли — Клейна</div></div>
   <div id="joy"><div id="knob"></div></div>
-  <div id="vbtns"><button id="bup" aria-label="Вверх">▲</button><button id="bdown" aria-label="Вниз">▼</button></div>
+  <div id="vbtns"><button id="bflag" aria-label="Флажок">⚑</button><button id="bup" aria-label="Вверх">▲</button><button id="bdown" aria-label="Вниз">▼</button></div>
 </div>
 
 <script>
 'use strict';
 // ───────────────────────── Миры ─────────────────────────
 const WORLDS = [
-  { id:'dodeca', type:'rooms', p:5, r:4, fog:5.5,
+  { id:'meadow', type:'meadow', fog:16, short:'Луг',
+    name:'Луг Лобачевского',
+    sub:'обычная местность · кривизна −1 · единица длины = радиус кривизны k',
+    desc:'Это настоящая плоскость Лобачевского, а не мозаика: луг, дорога, деревья, дома и солнце. Вы стоите на ней и идёте по прямым. Всё, что происходит, происходит по формулам курсовой, масштаб такой, чтобы эффекты было видно: деревья высотой 0,3 k, а ваш рост 0,07 k.',
+    formula:'сумма углов треугольника = π − S, где S — его площадь (k = 1)<br>четыре стороны по ρ с прямыми углами не замыкаются',
+    tasks:['Нажмите F три раза в разных местах (идите по дороге и в поле) и посмотрите на сумму углов и площадь треугольника.','Нажмите «Пройти квадрат»: четыре одинаковые стороны, четыре поворота на 90°. В евклидовой плоскости вы вернулись бы в начало, здесь нет.','Поднимитесь (Пробел): земля сжимается в круг, угловой радиус которого равен углу параллельности Π(h). Над его краем небо, хотя плоскость бесконечна.','Пойдите вдоль дороги и оглянитесь на перекрёсток: две дороги расходятся.'] },
+  { id:'dodeca', type:'rooms', p:5, r:4, fog:5.5, short:'Мозаика: додекаэдры',
     name:'Додекаэдры с прямыми углами',
     sub:'{5,3,4} · двугранный угол 90° · 4 комнаты у ребра',
     desc:'Каждая комната — правильный додекаэдр, и все его двугранные углы прямые. В евклидовом пространстве угол додекаэдра равен 116,6°, а здесь стены отодвинуты от центра на расстояние arth h, и угол становится прямым (п. 6.3). Отражения в гранях заполняют всё пространство без щелей и наложений.',
     formula:'cos α = (h² − cos φ)/(1 − h²), cos φ = 1/√5<br>h = 5<sup>−1/4</sup> ≈ 0,669 ⇒ α = 90°',
     tasks:['Облетите ребро: вокруг него ровно четыре комнаты.','Посмотрите вдаль: число видимых комнат растёт с расстоянием как показательная функция, а не как куб расстояния.','Лампы двух цветов: соседние комнаты всегда разного цвета, потому что у ребра чётное число комнат.'] },
-  { id:'cubes', type:'rooms', p:4, r:5, fog:5.5,
+  { id:'cubes', type:'rooms', p:4, r:5, fog:5.5, short:'Мозаика: кубы 72°',
     name:'Кубы с углом 72°',
     sub:'{4,3,5} · двугранный угол 72° · 5 кубов у ребра',
     desc:'Комната — куб, грани которого в модели лежат в плоскостях kᵢ = ±t. По теореме 6.1 его двугранный угол меньше прямого. При t ≈ 0,486 угол равен 72°, и вокруг каждого ребра помещаются ровно пять кубов. Четыре куба оставили бы щель из п. 6.2.',
     formula:'cos α = t²/(1 − t²)<br>t = 0,486 ⇒ α = 72° = 360°/5',
     tasks:['Облетите ребро: кубов вокруг него пять, а не четыре.','Сравните с мирами «Евклидовы кубы» и «Кубы на абсолюте».','Все лампы одного цвета: при пяти кубах у ребра раскрасить комнаты в шахматном порядке нельзя.'] },
-  { id:'ideal', type:'rooms', p:4, r:6, fog:6,
+  { id:'ideal', type:'rooms', p:4, r:6, fog:6, short:'Мозаика: кубы 60°',
     name:'Кубы с вершинами на абсолюте',
     sub:'{4,3,6} · двугранный угол 60° · 6 кубов у ребра',
     desc:'Если увеличивать куб, его вершины уходят на абсолют при t = 1/√3, а двугранный угол убывает до 60° (теорема 6.1). Такие кубы тоже заполняют пространство, по шесть у каждого ребра. Рёбра уходят в бесконечность, и встать у вершины нельзя.',
     formula:'t = 1/√3 ≈ 0,577<br>cos α = t²/(1 − t²) = 1/2 ⇒ α = 60°',
     tasks:['Летите к вершине: сколько бы вы ни летели, она остаётся на абсолюте.','Рядом с вершиной рёбра почти параллельны: это прямые, сходящиеся в одной точке абсолюта.'] },
-  { id:'euclid', type:'flat', fog:5.5,
+  { id:'euclid', type:'flat', fog:5.5, short:'Для сравнения: Евклид',
     name:'Евклидовы кубы',
     sub:'для сравнения · угол 90° · 4 куба у ребра',
     desc:'Тот же каркас в обычном пространстве. У каждого ребра стоят четыре куба, число видимых комнат растёт как куб расстояния, а прямые рёбра остаются параллельными сколь угодно далеко.',
     formula:'α = 90° = 360°/4',
     tasks:['Переключитесь на «Кубы с углом 72°» и обратно: в каком мире видно больше комнат при одинаковой видимости?'] },
-  { id:'house', type:'house', fog:4.8,
+  { id:'house', type:'house', fog:4.8, short:'Дом на орисферах',
     name:'Дом на орисферах',
     sub:'пол и потолок — орисферы · высота комнаты ln 2',
     desc:'Комната из п. 6.4: пол и потолок — концентрические орисферы, стены — плоскости через точку абсолюта ω над головой. Все углы прямые, пол — евклидов квадрат. Высота комнаты равна ln 2, поэтому потолок вдвое меньше пола. Над четырьмя соседними комнатами стоит одна, под полом каждой — четыре, и все комнаты одинаковые.',
     formula:'пол ⟨X,ℓ⟩ = −1, потолок ⟨X,ℓ⟩ = −e<sup>−h</sup><br>h = ln 2 ⇒ сторона потолка 2a·e<sup>−h</sup> = a',
     tasks:['Посмотрите вверх: все вертикальные рёбра сходятся в одну точку ω. Это связка параллельных прямых.','Поднимитесь на этаж (Пробел): комната станет вдвое шире, а внизу окажутся четыре комнаты.','Спуститесь (C): снизу комнаты кажутся всё мельче, но вокруг вас они такие же.'] },
-  { id:'plane', type:'plane', fog:8,
-    name:'Плоскость Лобачевского',
+  { id:'plane', type:'plane', fog:8, short:'Мозаика плоскости',
+    name:'Мозаика плоскости из пятиугольников',
     sub:'{5,4} · прямоугольные пятиугольники · вы идёте по эквидистанте',
     desc:'Пол — плоскость, замощённая правильными пятиугольниками с прямыми углами, по четыре у вершины. Вы идёте на постоянной высоте, то есть по эквидистантной поверхности (п. 5.6). Столбы в вершинах перпендикулярны полу и расходятся вверх: у двух перпендикуляров к одной плоскости нет общей точки. Карта справа — вид сверху в модели Кэли — Клейна, стороны пятиугольников на ней прямые.',
     formula:'ch²δ = 1/(1 − cos 72°) ⇒ δ ≈ 0,627<br>пол виден в круге радиуса Π(h) = 2 arctg e<sup>−h</sup>',
@@ -397,6 +416,104 @@ void main(){
   fragColor=vec4(finish(col),1.);
 }`;
 
+// Луг: плоскость Лобачевского без повторений — дорога, деревья, дома, флажки, солнце и тени.
+const FS_MEADOW = HEAD + `
+uniform vec4 uQ[40]; uniform vec4 uT1[40]; uniform vec4 uT2[40]; uniform vec4 uI[40];
+uniform float uNf; uniform vec4 uSun;
+const vec3 HAZE=vec3(0.66,0.76,0.90);
+float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
+vec4 lift(vec4 q, float h){ return cosh(h)*q+sinh(h)*vec4(0,0,1,0); }
+float map(vec4 p){
+  float hgt=asinh(p.z); float d=hgt; gId=0; int n=int(uNf+.5);
+  for(int i=0;i<40;i++){
+    if(i>=n) break;
+    vec4 q=uQ[i]; float R=uI[i].w;
+    float dq=acosh(max(-md(p,q),1.));
+    if(dq-R>d) continue;
+    float ty=uI[i].x, sz=uI[i].y;
+    float a=md(p,uT1[i]), b=md(p,uT2[i]);
+    float cyl=asinh(sqrt(a*a+b*b));
+    if(ty<1.5){
+      float tr=max(cyl-0.03*sz, hgt-0.20*sz); if(tr<d){d=tr;gId=1;}
+      float cr=acosh(max(-md(p,lift(q,0.30*sz)),1.))-0.17*sz; if(cr<d){d=cr;gId=2;}
+    }else if(ty<2.5){
+      float w=max(cyl-0.15*sz, hgt-0.13*sz); if(w<d){d=w;gId=3;}
+      float r=max(acosh(max(-md(p,lift(q,0.09*sz)),1.))-0.20*sz, 0.13*sz-hgt); if(r<d){d=r;gId=4;}
+    }else if(ty<3.5){
+      float pl=max(cyl-0.008, hgt-0.26); if(pl<d){d=pl;gId=5;}
+      vec4 q2=cosh(0.04)*q+sinh(0.04)*uT1[i];
+      float pn=acosh(max(-md(p,lift(q2,0.23)),1.))-0.035; if(pn<d){d=pn;gId=6;}
+    }else{
+      float rk=acosh(max(-md(p,lift(q,0.02*sz)),1.))-0.07*sz; if(rk<d){d=rk;gId=7;}
+    }
+  }
+  return d*0.85;
+}` + NORMAL + `
+vec3 sky(vec4 p, vec4 v){
+  vec4 up=tp(vec4(0,0,1,0),p); float sv=md(v,up);
+  vec3 c=mix(HAZE, vec3(0.20,0.42,0.82), smoothstep(0.0,0.75,sv));
+  vec4 s=tp(uSun,p); float cs=md(v,s);
+  c+=vec3(1.0,0.82,0.55)*pow(max(cs,0.),48.)*0.45;
+  c=mix(c,vec3(1.3,1.15,0.9),smoothstep(0.9990,0.9996,cs));
+  return c;
+}
+float shadow(vec4 p0){
+  int sid=gId; vec4 p=p0; vec4 v=tp(uSun,p0); float res=1., tt=0.;
+  adv(p,v,0.03); tt=0.03;
+  for(int i=0;i<36;i++){
+    float dd=map(p); res=min(res,7.*dd/tt);
+    if(res<0.02||tt>2.5) break;
+    float st=max(dd,0.012); adv(p,v,st); tt+=st;
+  }
+  gId=sid; return clamp(res,0.,1.);
+}
+void main(){
+  vec2 uv=(2.*gl_FragCoord.xy-uRes)/uRes.y;
+  vec3 dr=normalize(vec3(uv*uTanFov,1.));
+  vec4 p=uCam[3], v=uCam[0]*dr.x+uCam[1]*dr.y+uCam[2]*dr.z;
+  vec4 p0=p, v0=v;
+  float t=0., d=0.; bool hit=false;
+  for(int i=0;i<150;i++){
+    d=map(p);
+    if(d<3e-4*(1.+t)){hit=true;break;}
+    adv(p,v,d); t+=d;
+    if(t>13.||p.w>2.0e4) break;
+  }
+  vec3 col=sky(p0,v0);
+  if(hit){
+    int id=gId; vec4 n=calcN(p,d);
+    vec4 up=tp(vec4(0,0,1,0),p); vec4 s=tp(uSun,p);
+    vec3 base; float spec=0.;
+    if(id==0){
+      float ex=abs(asinh(p.x)), ey=abs(asinh(p.y)), er=min(ex,ey);
+      float far=exp(-t*0.8);
+      float nz=(vn(p.xy*9.)*0.6+vn(p.xy*31.)*0.4);
+      vec3 grass=mix(vec3(0.17,0.34,0.09),vec3(0.30,0.46,0.14),mix(0.5,nz,far));
+      float road=1.-smoothstep(0.075,0.095,er);
+      vec3 dirt=mix(vec3(0.47,0.38,0.27),vec3(0.58,0.50,0.37),mix(0.5,vn(p.xy*24.),far));
+      float edge=smoothstep(0.065,0.08,er)*(1.-smoothstep(0.08,0.10,er));
+      base=mix(grass,dirt,road); base*=1.-0.25*edge;
+    }
+    else if(id==1) base=vec3(0.33,0.21,0.12);
+    else if(id==2) base=mix(vec3(0.10,0.28,0.08),vec3(0.22,0.42,0.12),vn(p.xy*37.+p.z*23.));
+    else if(id==3) base=vec3(0.88,0.82,0.70);
+    else if(id==4) base=vec3(0.62,0.21,0.14);
+    else if(id==5) base=vec3(0.92,0.92,0.90);
+    else if(id==6) base=vec3(0.90,0.18,0.12);
+    else base=vec3(0.50,0.50,0.48)*(0.8+0.4*vn(p.xy*17.));
+    float sh=shadow(p);
+    float dif=max(md(n,s),0.)*sh;
+    float amb=0.30+0.70*max(md(n,up),0.)*0.5;
+    vec3 sunc=vec3(1.0,0.90,0.72)*2.0, skyc=vec3(0.42,0.56,0.85);
+    vec3 sc=base*(sunc*dif+skyc*amb*0.55);
+    if(id==6) sc+=base*0.6;
+    col=mix(HAZE,sc,exp(-t/uFog));
+  }
+  fragColor=vec4(finish(col),1.);
+}`;
+
 // Евклидовы кубы для сравнения.
 const FS_FLAT = `#version 300 es
 precision highp float;
@@ -558,7 +675,7 @@ function program(g,fs){
   return {pr,loc};
 }
 const PR={};
-try{ PR.rooms=program(gl,FS_ROOMS); PR.house=program(gl,FS_HOUSE); PR.plane=program(gl,FS_PLANE); PR.flat=program(gl,FS_FLAT); }
+try{ PR.rooms=program(gl,FS_ROOMS); PR.house=program(gl,FS_HOUSE); PR.plane=program(gl,FS_PLANE); PR.meadow=program(gl,FS_MEADOW); PR.flat=program(gl,FS_FLAT); }
 catch(e){fail('Не удалось собрать шейдер:<br><pre style="text-align:left;white-space:pre-wrap;font-size:12px">'+String(e.message).replace(/</g,'&lt;')+'</pre>');throw e;}
 gl.bindVertexArray(gl.createVertexArray());
 
@@ -586,6 +703,7 @@ function initCam(w){
     c.start=apply(c.G,col(c.M,3));return c;
   }
   if(w.type==='house'){const c={X:0.5*HS,Y:0.18*HS,L:0,h:0.26,yaw:Math.PI/2,pitch:0.12};c.start=houseAbs(c);return c;}
+  if(w.type==='meadow'){const c={T:I4(),G:I4(),h:0.07,yaw:0,pitch:0.03,par:0,flags:[],auto:null};c.start=O.slice();return c;}
   if(w.type==='plane'){const c={T:I4(),G:I4(),h:0.45,yaw:0.35,pitch:-0.12,par:0};c.start=apply(mul(c.G,c.T),O);return c;}
   const M=I4();setCol(M,3,[0.5,0.5,-0.1,1]);return {M,abs:[0.5,0.5,-0.1],cross:0,start:[0.5,0.5,-0.1]};
 }
@@ -605,14 +723,81 @@ function gsPlane(T){
 }
 function houseAbs(c){const f=Math.pow(2,c.L);return [c.X*f,c.Y*f,Math.exp(c.h)*f];}
 
+
+// ───────────────────────── Луг: сцена и инструменты ─────────────────────────
+function buildMeadow(){
+  let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  const objs=[];
+  const add=(type,sz,R,rho,phi)=>{
+    const sh=Math.sinh(rho),ch=Math.cosh(rho),cp=Math.cos(phi),sp=Math.sin(phi);
+    const q=[sh*cp,sh*sp,0,ch];
+    if(Math.min(Math.abs(Math.asinh(q[0])),Math.abs(Math.asinh(q[1])))<0.14+0.12*sz)return false;
+    for(const o of objs)if(Math.acosh(Math.max(1,-md(q,o.q)))<0.34*(sz+o.sz))return false;
+    objs.push({q,t1:[ch*cp,ch*sp,0,sh],t2:[-sp,cp,0,0],info:[type,sz,0,R],sz});return true;
+  };
+  const place=(n,type,szLo,szHi,R,rLo,rHi)=>{let k=0,tries=0;
+    while(k<n&&tries++<400){const sz=szLo+(szHi-szLo)*rnd();if(add(type,sz,R*sz,rLo+(rHi-rLo)*rnd(),rnd()*2*Math.PI))k++;}};
+  place(4,2,0.9,1.2,0.40,0.9,2.2);
+  place(17,1,0.8,1.3,0.50,0.5,3.3);
+  place(5,4,0.8,1.6,0.12,0.4,2.6);
+  return objs;
+}
+const MEADOW=buildMeadow();
+const MAXFLAGS=12;
+function addFlag(c,fwd=0.15,side=0){
+  if(c.flags.length>=MAXFLAGS)return false;
+  let F=mul(c.T,mul(rotZ(c.yaw),boostX(fwd)));
+  if(side)F=mul(F,mul(rotZ(Math.PI/2),boostX(side)));
+  F=gsPlane(F);
+  c.flags.push({q:col(F,3).slice(),t1:col(F,0).slice(),t2:col(F,1).slice()});return true;
+}
+function tanDir(A,B){const d=md(B,A),v=B.map((x,i)=>x+d*A[i]),k=1/Math.sqrt(Math.max(md(v,v),1e-30));return v.map(x=>x*k);}
+const hdist=(P,Q)=>Math.acosh(Math.max(1,-md(P,Q)));
+function triInfo(flags){
+  const [A,B,C]=flags.slice(-3).map(o=>o.q);
+  const ang=(P,Q,R)=>Math.acos(Math.max(-1,Math.min(1,md(tanDir(P,Q),tanDir(P,R)))));
+  const a=ang(A,B,C),b=ang(B,A,C),c=ang(C,A,B);
+  return {a,b,c,sum:a+b+c,defect:Math.PI-(a+b+c),sides:[hdist(B,C),hdist(A,C),hdist(A,B)]};
+}
+function meadowUniforms(c){
+  const N=MEADOW.length+c.flags.length,Q=new Float32Array(160),T1=new Float32Array(160),T2=new Float32Array(160),I=new Float32Array(160);
+  const all=MEADOW.concat(c.flags.map(f=>({q:f.q,t1:f.t1,t2:f.t2,info:[3,1,0,0.30]})));
+  all.forEach((o,i)=>{Q.set(o.q,i*4);T1.set(o.t1,i*4);T2.set(o.t2,i*4);I.set(o.info,i*4);});
+  return {N,Q,T1,T2,I};
+}
+function startSquare(){
+  const c=state.meadow;if(!c)return;
+  const L=+document.getElementById('side').value;
+  c.flags=[];addFlag(c,0,0.10);c.auto={leg:0,rem:L,L,turn:0,start:col(c.T,3).slice()};
+  document.getElementById('result').textContent='Иду…';moved=true;
+}
+function autoStep(c,dt){
+  const a=c.auto;
+  if(a.turn>0){const d=Math.min(a.turn,2.4*dt);c.yaw-=d;a.turn-=d;return;}
+  const ds=Math.min(a.rem,0.45*dt);
+  const phi=c.yaw;c.T=gsPlane(mul(c.T,mul(mul(rotZ(phi),boostX(ds)),rotZ(-phi))));
+  a.rem-=ds;
+  if(a.rem<=1e-9){
+    addFlag(c,0,0.10);a.leg++;
+    if(a.leg>=4){
+      const gap=hdist(col(c.T,3),a.start);
+      document.getElementById('result').innerHTML=`Четыре стороны по ${fmt(a.L)} и четыре поворота на 90°. До начала осталось ${fmt(gap)}. На евклидовой плоскости было бы 0.`;
+      c.auto=null;
+    }else{a.turn=Math.PI/2;a.rem=a.L;}
+  }
+}
+function clearFlags(){const c=state.meadow;if(!c)return;c.flags=[];c.auto=null;document.getElementById('result').textContent='';}
+
 // ───────────────────────── Ввод ─────────────────────────
 const keys=new Set();
 let look=[0,0], joy=[0,0], vbtn=0, moved=false;
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'&&e.target.type==='range')return;
   const k=e.code;
-  if(/^Digit[1-6]$/.test(k)){setWorld(WORLDS[+k.slice(5)-1]);return;}
+  if(/^Digit[1-7]$/.test(k)){setWorld(WORLDS[+k.slice(5)-1]);return;}
   if(k==='KeyR'){resetCam();return;}
+  if(k==='KeyF'&&world.type==='meadow'){addFlag(state.meadow);return;}
+  if(k==='KeyX'&&world.type==='meadow'){clearFlags();return;}
   if(k==='KeyH'){togglePanel();return;}
   keys.add(k); if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k))e.preventDefault();
 });
@@ -645,7 +830,7 @@ for(const [id,dir] of [['bup',1],['bdown',-1]]){const b=document.getElementById(
 function step(dt){
   const c=state[world.id];
   const run=keys.has('ShiftLeft')||keys.has('ShiftRight')?2.6:1;
-  const sp=0.55*run*dt;
+  const sp=(world.type==='meadow'?0.22:0.55)*run*dt;
   let f=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0)+joy[1];
   let s=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0)+joy[0];
   let u=(keys.has('Space')?1:0)-(keys.has('KeyC')||keys.has('ControlLeft')?1:0)+vbtn;
@@ -654,6 +839,7 @@ function step(dt){
   const sens=0.0026;
   let lx=look[0]*sens+turn*1.6*dt, ly=look[1]*sens; look=[0,0];
   if(f||s||u||lx||ly||roll) moved=true;
+  if(world.type==='meadow'&&c.auto){ if(f||s||u){c.auto=null;document.getElementById('result').textContent='Прервано.';} else {autoStep(c,dt);return;} }
   if(world.type==='rooms'||world.type==='flat'){
     const M=c.M;
     if(lx) rotLocal(M,2,0,lx);
@@ -685,8 +871,8 @@ function step(dt){
     }else{
       const m=Math.hypot(dx,dy);
       if(m>1e-9){const phi=Math.atan2(dy,dx);c.T=mul(c.T,mul(mul(rotZ(phi),boostX(m*sp/Math.cosh(c.h))),rotZ(-phi)));}
-      if(u){c.h=Math.max(0.05,Math.min(3,c.h+u*sp));syncHeight();}
-      c.T=gsPlane(c.T); foldPlane(c);
+      if(u){c.h=Math.max(world.type==='meadow'?0.03:0.05,Math.min(3,c.h+u*sp));syncHeight();}
+      c.T=gsPlane(c.T); if(world.type==='plane')foldPlane(c);
     }
   }
 }
@@ -725,6 +911,9 @@ function render(){
     U(P,'uBall',world.p===5?0.085:0.075);U(P,'uTube',0.04);U(P,'uParity',world.r%2===0&&world.p===5?1:0);U(P,'uCamPar',c.par);}
   else if(world.type==='house'){const cx=Math.floor(c.X/HS),cy=Math.floor(c.Y/HS),m=v=>((v%1024)+1024)%1024;
     U(P,'uS',HS);U(P,'uCell',[m(cx),m(cy)]);U(P,'uTube',0.022);}
+  else if(world.type==='meadow'){const m=meadowUniforms(c),a=2.2,e=0.62;
+    U(P,'uQ',m.Q);U(P,'uT1',m.T1);U(P,'uT2',m.T2);U(P,'uI',m.I);U(P,'uNf',m.N);
+    U(P,'uSun',[Math.cos(e)*Math.cos(a),Math.cos(e)*Math.sin(a),Math.sin(e),1]);}
   else if(world.type==='plane'){U(P,'uM',PL.M.flat());U(P,'uE1',PL.E1);U(P,'uE2',PL.E2);U(P,'uCamPar',c.par);U(P,'uLampH',1.1);U(P,'uTube',0.035);}
   else{U(P,'uTube',0.04);U(P,'uBall',0.075);}
   gl.drawArrays(gl.TRIANGLES,0,3);
@@ -757,12 +946,16 @@ function hud(){
   else if(world.type==='flat'){const d=Math.hypot(...c.abs.map((x,i)=>x-c.start[i]));rows=[['до начала',fmt(d)],['кубов от начала',String(c.cross)]];}
   else if(world.type==='house'){const a=houseAbs(c),s=c.start,d2=(a[0]-s[0])**2+(a[1]-s[1])**2+(a[2]-s[2])**2;
     rows=[['до начала, ρ',fmt(Math.acosh(1+d2/(2*a[2]*s[2])))],['этаж',(c.L>0?'+':c.L<0?'−':'')+Math.abs(c.L)],['высота над полом',fmt(c.h)]];}
+  else if(world.type==='meadow'){const a=col(c.T,3),P=2*Math.atan(Math.exp(-c.h));
+    rows=[['до перекрёстка, ρ',fmt(hdist(a,O))],['высота глаз',fmt(c.h)],['флажков',c.flags.length+' из '+MAXFLAGS],['Π(h)',fmt(P*180/Math.PI,1)+'°']];
+    if(c.flags.length>=3){const t=triInfo(c.flags);
+      rows.push(['углы',[t.a,t.b,t.c].map(x=>fmt(x*180/Math.PI,1)+'°').join(' + ')],['сумма',fmt(t.sum*180/Math.PI,1)+'°'],['площадь S = π − сумма',fmt(t.defect,3)+' k²'],['стороны',t.sides.map(x=>fmt(x)).join(' · ')]);}}
   else{const a=apply(mul(c.G,c.T),O),P=2*Math.atan(Math.exp(-c.h));
     rows=[['до начала по полу',fmt(Math.acosh(Math.max(1,-md(a,c.start))))],['высота h',fmt(c.h)],['Π(h)',fmt(P*180/Math.PI,1)+'°'],['край пола ниже горизонта на',fmt(90-P*180/Math.PI,1)+'°']];}
   statsEl.innerHTML=rows.map(([k,v])=>`<span class="k">${k}</span><span class="v">${v}</span>`).join('');
 }
 const worldsEl=document.getElementById('worlds');
-WORLDS.forEach((w,i)=>{const b=document.createElement('button');b.innerHTML=`<kbd>${i+1}</kbd>${w.name.replace(' с прямыми углами','').replace(' с вершинами на абсолюте',' на абсолюте')}`;
+WORLDS.forEach((w,i)=>{const b=document.createElement('button');b.innerHTML=`<kbd>${i+1}</kbd>${w.short||w.name}`;
   b.dataset.id=w.id;b.addEventListener('click',()=>setWorld(w));worldsEl.appendChild(b);});
 function setWorld(w){
   world=w; if(!state[w.id])state[w.id]=initCam(w);
@@ -773,17 +966,24 @@ function setWorld(w){
   document.getElementById('wtasks').innerHTML=w.tasks.map(t=>`<li>${t}</li>`).join('');
   for(const b of worldsEl.children)b.setAttribute('aria-pressed',b.dataset.id===w.id);
   document.getElementById('mapwrap').hidden=w.type!=='plane'||!MAP;
-  document.getElementById('hrow').hidden=w.type!=='plane';
+  document.getElementById('hrow').hidden=!(w.type==='plane'||w.type==='meadow');
+  document.getElementById('mtools').hidden=w.type!=='meadow';
+  hEl.min=w.type==='meadow'?0.03:0.05;
   fogEl.value=w.fog;syncFog();syncHeight();
-  try{localStorage.setItem('lob-world',w.id);}catch(_){}
+  try{localStorage.setItem('lob-world2',w.id);}catch(_){}
   hud();
 }
 function resetCam(){state[world.id]=initCam(world);syncHeight();}
 function syncFog(){document.getElementById('fout').textContent=fmt(+fogEl.value,1);}
-function syncHeight(){if(world.type!=='plane')return;const c=state[world.id];hEl.value=c.h;document.getElementById('hout').textContent=fmt(c.h);}
+function syncHeight(){if(world.type!=='plane'&&world.type!=='meadow')return;const c=state[world.id];hEl.value=c.h;document.getElementById('hout').textContent=fmt(c.h);}
 fogEl.addEventListener('input',syncFog);
-hEl.addEventListener('input',()=>{if(world.type==='plane'){state[world.id].h=+hEl.value;syncHeight();}});
+hEl.addEventListener('input',()=>{if(world.type==='plane'||world.type==='meadow'){state[world.id].h=+hEl.value;syncHeight();}});
 document.getElementById('reset').addEventListener('click',resetCam);
+document.getElementById('bflagp').addEventListener('click',()=>{if(world.type==='meadow')addFlag(state.meadow);});
+document.getElementById('bflag').addEventListener('click',()=>{if(world.type==='meadow')addFlag(state.meadow);});
+document.getElementById('bclear').addEventListener('click',clearFlags);
+document.getElementById('bsquare').addEventListener('click',startSquare);
+document.getElementById('side').addEventListener('input',e=>{document.getElementById('sout').textContent=fmt(+e.target.value);});
 document.getElementById('fs').addEventListener('click',()=>{try{const r=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>{});}catch(_){}});
 const panel=document.getElementById('panel'),pt=document.getElementById('ptoggle');
 function togglePanel(){panel.classList.toggle('closed');const open=!panel.classList.contains('closed');pt.setAttribute('aria-expanded',open);pt.querySelector('span').textContent=open?'−':'+';}
@@ -792,10 +992,10 @@ const coarse=matchMedia('(pointer:coarse)').matches;
 if(coarse||innerWidth<760)togglePanel();
 const hint=document.getElementById('hint');
 hint.textContent=coarse?'Левый круг — идти, ведите пальцем по экрану — смотреть, ▲ ▼ — вверх и вниз'
-  :'Щёлкните по сцене и смотрите мышью · W A S D — идти · Пробел и C — вверх и вниз · Shift — быстрее · Q и E — наклон · R — к началу · 1–6 — миры';
+  :'Щёлкните по сцене и смотрите мышью · W A S D — идти · Пробел и C — вверх и вниз · Shift — быстрее · F — флажок · Q и E — наклон · R — к началу · 1–7 — миры';
 setInterval(()=>{if(moved)hint.classList.add('gone');},4000);
 
-let startId='dodeca';try{startId=localStorage.getItem('lob-world')||startId;}catch(_){}
+let startId='meadow';try{startId=localStorage.getItem('lob-world2')||startId;}catch(_){}
 if(location.hash){const h=location.hash.slice(1);if(WORLDS.some(w=>w.id===h))startId=h;}
 setWorld(WORLDS.find(w=>w.id===startId)||WORLDS[0]);
 requestAnimationFrame(frame);
